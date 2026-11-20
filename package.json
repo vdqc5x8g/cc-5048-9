@@ -8,7 +8,9 @@
     "start": "node cli/serve.js",
     "trajectory": "node cli/atw-cli.js trajectory-csv",
     "error-table": "node cli/atw-cli.js error-table",
-    "check": "node --check js/main.js && node --check js/math3d.js && node --check js/trajectory.js && node --check js/scene.js && node --check js/reproject.js && node --check js/audio.js && node --check cli/atw-cli.js && node --check cli/serve.js"
+    "migrate": "node cli/migrate-verify.js run",
+    "test": "node cli/migrate-verify.js run",
+    "check": "node --check js/main.js && node --check js/math3d.js && node --check js/trajectory.js && node --check js/scene.js && node --check js/reproject.js && node --check js/audio.js && node --check js/markers.js && node --check js/cpu-backend.js && node --check js/frame-pool.js && node --check js/replay.js && node --check js/verifier.js && node --check js/webgl-backend.js && node --check js/migration-panel.js && node --check cli/atw-cli.js && node --check cli/serve.js && node --check cli/migrate-verify.js"
   },
   "engines": {
     "node": ">=18"

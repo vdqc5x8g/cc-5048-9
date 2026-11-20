@@ -76,6 +76,67 @@
   </div>
 </section>
 
+<section class="control-panel" id="migration-panel">
+  <h2>图形后端迁移核对（帧令牌 · 环形槽代际 · 迟到栅栏单步放行）</h2>
+  <div class="mig-grid">
+    <div class="mig-view">
+      <canvas id="mig-canvas" width="160" height="120"></canvas>
+      <p class="hint" id="mig-status">初始化…</p>
+      <pre class="mig-corners" id="mig-corners"></pre>
+    </div>
+    <div class="mig-controls">
+      <div class="control-block">
+        <h3>工程与后端</h3>
+        <label>工程轨迹
+          <select id="mig-project">
+            <option value="legacy">旧工程（仅偏航 yaw）</option>
+            <option value="triad">新工程（偏航+俯仰+滚转）</option>
+          </select>
+        </label>
+        <label>栅栏闸门
+          <select id="mig-gate">
+            <option value="manual">手动（栅栏等待，单步放行）</option>
+            <option value="auto">自动（渲染完成即放行）</option>
+          </select>
+        </label>
+        <label>呈现策略
+          <select id="mig-policy">
+            <option value="wait">wait：等待目标帧（保持上一帧）</option>
+            <option value="discard">discard：丢弃过时姿态，回退已就绪帧</option>
+          </select>
+        </label>
+        <label>显示眼别
+          <select id="mig-eye">
+            <option value="0">左眼</option>
+            <option value="1">右眼</option>
+          </select>
+        </label>
+        <label>翻转注入（故障核对）
+          <select id="mig-flip">
+            <option value="0">无翻转</option>
+            <option value="1">纹理原点翻转</option>
+            <option value="2">矩阵翻转</option>
+          </select>
+        </label>
+      </div>
+      <div class="control-block">
+        <h3>单步与重放</h3>
+        <div class="btn-row">
+          <button id="mig-step-time" type="button">推进 +33 ms</button>
+          <button id="mig-step-fence" type="button">放行一个迟到栅栏</button>
+          <button id="mig-reset" type="button">重置</button>
+        </div>
+        <div class="btn-row" style="margin-top:6px">
+          <button id="mig-check-legacy" type="button">读取旧记录（仅帧号）</button>
+          <button id="mig-export-replay" type="button">导出最小重放 JSON</button>
+        </div>
+        <p class="hint">环形槽仅 2 个：第 3 帧起纹理槽开始复用。旧令牌取纹理会被代际守卫拒绝，不会把当前槽内容当作历史图像。</p>
+        <pre class="mig-log" id="mig-log"></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="control-panel">
   <h2>转头重投影控制台（所有按钮驱动实时着色器重投影，无固定画面数据）</h2>
   <div class="control-grid">

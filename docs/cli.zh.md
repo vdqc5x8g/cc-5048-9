@@ -59,7 +59,24 @@ node cli/atw-cli.js error-table --duration 10 --latency 100 \
 该表是**边界几何的独立数值核算**，用于与页面指标卡、导出 CSV 交叉对照，
 不包含也不依赖任何渲染画面。
 
-## 3. 语法自检
+## 3. 图形后端迁移核对 `migrate-verify`
+
+后端迁移（帧令牌、环形槽代际、迟到栅栏、不对称角标）的无头核对，使用与
+WebGL 适配器同接口的 CPU 软件后端，零依赖、可重复：
+
+```bash
+node cli/migrate-verify.js run                       # 全部七个场景
+node cli/migrate-verify.js interleave                # 两帧交叉完成 + 栅栏单步放行
+node cli/migrate-verify.js corners                   # 旧/新工程双眼四角读取
+node cli/migrate-verify.js flip --mode origin        # 纹理原点翻转定位
+node cli/migrate-verify.js flip --mode matrix        # 矩阵翻转定位
+node cli/migrate-verify.js replay --out replay.json  # 含纹理复用的最小重放
+```
+
+可选参数：`--width 160 --height 120 --slots 2`。退出码非 0 表示有场景失败。
+设计与判据见 `docs/migration.zh.md`。
+
+## 4. 语法自检
 
 ```bash
 npm run check

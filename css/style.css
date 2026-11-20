@@ -203,6 +203,22 @@ button.active {
 
 .hint { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; }
 
+#migration-panel { margin-top: 16px; }
+.mig-grid { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+.mig-view { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+#mig-canvas { width: 220px; height: 165px; image-rendering: pixelated; background: #000; border-radius: 4px; }
+.mig-corners {
+  margin: 8px 0 0; font-size: 11.5px; color: var(--text);
+  white-space: pre-wrap; font-family: monospace;
+}
+.mig-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mig-controls select { width: 100%; margin-top: 2px; background: var(--panel); color: var(--text); border: 1px solid #3a4a5e; border-radius: 4px; padding: 4px; }
+.mig-log {
+  margin: 8px 0 0; min-height: 64px; max-height: 140px; overflow-y: auto;
+  background: #0c1017; border: 1px solid var(--line); border-radius: 4px;
+  padding: 6px 8px; font-size: 11px; color: var(--accent-fix); white-space: pre-wrap;
+}
+
 .explain {
   margin-top: 16px;
   background: var(--panel);

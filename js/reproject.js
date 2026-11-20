@@ -16,9 +16,13 @@ const BLIT_FS = `#version 300 es
 precision highp float;
 in vec2 vUV;
 uniform sampler2D uTex;
+uniform int uFlipMode;   // 0 正常, 1 纹理原点垂直翻转, 2 矩阵水平翻转（故障注入核对用）
 out vec4 outColor;
 void main() {
-  outColor = texture(uTex, vUV);
+  vec2 uv = vUV;
+  if (uFlipMode == 1) uv.y = 1.0 - uv.y;
+  if (uFlipMode == 2) uv.x = 1.0 - uv.x;
+  outColor = texture(uTex, uv);
 }`;
 
 // 重投影：对呈现时刻的每个像素，逆投影求相机空间射线，
@@ -31,6 +35,7 @@ uniform float uTanHalfFovY;   // tan(fovY/2)
 uniform float uAspect;        // width / height
 uniform vec4 uDeltaQuat;      // (x, y, z, w)
 uniform int uEdgeMode;        // 0 = 斜纹标记, 1 = 边缘钳取
+uniform int uFlipMode;        // 0 正常, 1 纹理原点翻转, 2 矩阵翻转（故障注入）
 out vec4 outColor;
 
 vec3 rotateVec(vec4 q, vec3 v) {
@@ -40,6 +45,7 @@ vec3 rotateVec(vec4 q, vec3 v) {
 void main() {
   // 1) 呈现帧像素 -> NDC(z=1，相机在原点，方向与深度无关) -> 相机空间射线
   vec2 ndc = vUV * 2.0 - 1.0;
+  if (uFlipMode == 2) ndc.x = -ndc.x; // 矩阵符号翻转注入
   vec3 rayPresent = vec3(ndc.x * uAspect * uTanHalfFovY,
                          ndc.y * uTanHalfFovY,
                          -1.0);
@@ -51,6 +57,7 @@ void main() {
   vec2 oldNdc = vec2(rayOld.x / (uAspect * uTanHalfFovY * (-rayOld.z)),
                      rayOld.y / (uTanHalfFovY * (-rayOld.z)));
   vec2 oldUV = oldNdc * 0.5 + 0.5;
+  if (uFlipMode == 1) oldUV.y = 1.0 - oldUV.y; // 纹理原点翻转注入
 
   float eps = 1.5e-3;
   bool inside = all(greaterThanEqual(oldUV, vec2(eps))) &&
@@ -120,12 +127,14 @@ export function createReprojectPipeline(gl) {
   const quad = createFullscreenQuad(gl);
 
   const uBlit = gl.getUniformLocation(blitProg, 'uTex');
+  const uBlitFlip = gl.getUniformLocation(blitProg, 'uFlipMode');
   const uRep = {
     oldTex: gl.getUniformLocation(reProg, 'uOldTex'),
     tanHalfFovY: gl.getUniformLocation(reProg, 'uTanHalfFovY'),
     aspect: gl.getUniformLocation(reProg, 'uAspect'),
     deltaQuat: gl.getUniformLocation(reProg, 'uDeltaQuat'),
     edgeMode: gl.getUniformLocation(reProg, 'uEdgeMode'),
+    flipMode: gl.getUniformLocation(reProg, 'uFlipMode'),
   };
 
   return {
@@ -134,7 +143,7 @@ export function createReprojectPipeline(gl) {
     },
 
     // 直接纹理拷贝（未经修正的延迟画面）
-    blit(target, srcTex, viewW, viewH) {
+    blit(target, srcTex, viewW, viewH, flipMode = 0) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
       gl.viewport(0, 0, viewW, viewH);
       gl.disable(gl.DEPTH_TEST);
@@ -143,12 +152,13 @@ export function createReprojectPipeline(gl) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, srcTex);
       gl.uniform1i(uBlit, 0);
+      gl.uniform1i(uBlitFlip, flipMode);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.bindVertexArray(null);
     },
 
     // 迟到修正：旧纹理 + 姿态四元数增量 -> 重投影画面
-    reproject(target, frameTex, deltaQuat, cam, edgeMode, viewW, viewH) {
+    reproject(target, frameTex, deltaQuat, cam, edgeMode, viewW, viewH, flipMode = 0) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
       gl.viewport(0, 0, viewW, viewH);
       gl.disable(gl.DEPTH_TEST);
@@ -161,6 +171,7 @@ export function createReprojectPipeline(gl) {
       gl.uniform1f(uRep.aspect, cam.aspect);
       gl.uniform4fv(uRep.deltaQuat, deltaQuat);
       gl.uniform1i(uRep.edgeMode, edgeMode);
+      gl.uniform1i(uRep.flipMode, flipMode);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.bindVertexArray(null);
     },

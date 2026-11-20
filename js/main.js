@@ -14,6 +14,7 @@ import {
 import { createScene } from './scene.js';
 import { createReprojectPipeline } from './reproject.js';
 import { SpatialAudio } from './audio.js';
+import { initMigrationPanel } from './migration-panel.js';
 
 const FOV_Y = (72 * Math.PI) / 180;
 const NEAR = 0.1;
@@ -545,6 +546,7 @@ $('btn-clear-log').addEventListener('click', () => {
 // ---------- 启动 ----------
 
 try {
+  initMigrationPanel();
   requestAnimationFrame((t) => { state.lastWallMs = t; frame(t); });
 } catch (err) {
   document.body.insertAdjacentHTML('afterbegin',
