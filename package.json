@@ -1,0 +1,16 @@
+{
+  "name": "head-turn-reprojection-atw",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "快速转头场景的迟到姿态修正（旋转重投影）演示：旧帧 / 修正帧 / 参考帧三视窗与空间音画视窗",
+  "scripts": {
+    "start": "node cli/serve.js",
+    "trajectory": "node cli/atw-cli.js trajectory-csv",
+    "error-table": "node cli/atw-cli.js error-table",
+    "check": "node --check js/main.js && node --check js/math3d.js && node --check js/trajectory.js && node --check js/scene.js && node --check js/reproject.js && node --check js/audio.js && node --check cli/atw-cli.js && node --check cli/serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

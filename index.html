@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>转头重投影 · 空间音画视窗（迟到姿态修正演示）</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>转头重投影 · 空间音画视窗</h1>
+    <p class="subtitle">迟到姿态修正（旋转类 ATW）：场景按较早姿态渲染，显示前以最新朝向做旋转重投影 — 未提高原始渲染频率</p>
+  </div>
+  <div class="scope-note">
+    适用范围：仅头显/相机<strong>旋转</strong>（yaw/pitch/roll 数学一致，演示轨迹为 yaw）。
+    不宣称修复<strong>头部平移</strong>或<strong>场景物体独立运动</strong>导致的视觉误差。
+  </div>
+</header>
+
+<main>
+<section class="panel-row">
+  <figure class="viewport" id="vp-old">
+    <figcaption>
+      <span class="tag tag-old">① 未经修正的延迟画面</span>
+      <span class="meta" id="meta-old"></span>
+    </figcaption>
+    <canvas id="canvas-old" width="640" height="480"></canvas>
+    <div class="overlay" id="overlay-old"></div>
+  </figure>
+  <figure class="viewport" id="vp-fix">
+    <figcaption>
+      <span class="tag tag-fix">② 迟到修正帧（重投影）</span>
+      <span class="meta" id="meta-fix"></span>
+    </figcaption>
+    <canvas id="canvas-fix" width="640" height="480"></canvas>
+    <div class="overlay" id="overlay-fix"></div>
+  </figure>
+  <figure class="viewport" id="vp-ref">
+    <figcaption>
+      <span class="tag tag-ref">③ 参考帧（以最新姿态直接渲染，离线诊断用）</span>
+      <span class="meta" id="meta-ref"></span>
+    </figcaption>
+    <canvas id="canvas-ref" width="640" height="480"></canvas>
+    <div class="overlay" id="overlay-ref"></div>
+  </figure>
+</section>
+
+<section class="hud-row">
+  <div class="hud-card timeline-card">
+    <h2>时刻记录（每帧真实采样）</h2>
+    <canvas id="timeline-canvas" width="900" height="96"></canvas>
+    <table class="time-table">
+      <thead>
+        <tr><th>帧</th><th>姿态采样 t_s (ms)</th><th>渲染时刻 t_r (ms)</th><th>呈现时刻 t_p (ms)</th><th>端到端延迟 (ms)</th><th>Δyaw (°)</th><th>角速度 (°/s)</th></tr>
+      </thead>
+      <tbody id="time-rows"></tbody>
+    </table>
+  </div>
+  <div class="hud-card metrics-card">
+    <h2>误差与边界（随角速度）</h2>
+    <div class="metric-grid">
+      <div><label>当前角速度</label><span id="m-omega">0.0 °/s</span></div>
+      <div><label>修正帧 RMS 色差</label><span id="m-rms-fix">0.00</span></div>
+      <div><label>旧帧 RMS 色差</label><span id="m-rms-old">0.00</span></div>
+      <div><label>修正帧越界占比</label><span id="m-edge">0.0 %</span></div>
+      <div><label>本帧重投影修正角度 |Δyaw|</label><span id="m-resid">0.00 °</span></div>
+      <div><label>渲染频率（实测）</label><span id="m-fps">0.0 Hz</span></div>
+    </div>
+    <canvas id="chart-canvas" width="440" height="220"></canvas>
+    <div class="legend">
+      <span class="dot dot-fix"></span>修正帧 RMS
+      <span class="dot dot-old"></span>旧帧 RMS
+      <span class="dot dot-edge"></span>越界占比
+    </div>
+  </div>
+</section>
+
+<section class="control-panel">
+  <h2>转头重投影控制台（所有按钮驱动实时着色器重投影，无固定画面数据）</h2>
+  <div class="control-grid">
+    <div class="control-block">
+      <h3>播放</h3>
+      <div class="btn-row">
+        <button id="btn-play" type="button">暂停</button>
+        <button id="btn-step" type="button">单步 +33 ms</button>
+        <button id="btn-reset" type="button">重置轨迹</button>
+      </div>
+    </div>
+    <div class="control-block">
+      <h3>转头轨迹（可重复正弦 yaw）</h3>
+      <label>振幅 <output id="out-amp">45</output>°
+        <input id="sl-amp" type="range" min="5" max="80" step="1" value="45"></label>
+      <label>频率 <output id="out-freq">0.8</output> Hz
+        <input id="sl-freq" type="range" min="0.1" max="3" step="0.1" value="0.8"></label>
+      <label>相位 <output id="out-phase">0</output>°
+        <input id="sl-phase" type="range" min="0" max="359" step="1" value="0"></label>
+      <div class="btn-row">
+        <button id="btn-sweep" type="button">角速度扫描（10 s 自动实验）</button>
+        <button id="btn-sweep-cancel" type="button" disabled>停止扫描</button>
+      </div>
+    </div>
+    <div class="control-block">
+      <h3>延迟与渲染节奏</h3>
+      <label>运动-光子延迟 <output id="out-latency">100</output> ms
+        <input id="sl-latency" type="range" min="0" max="300" step="5" value="100"></label>
+      <label>原始渲染间隔 <output id="out-rinterval">66</output> ms（<output id="out-rhz">15.2</output> Hz，固定）
+        <input id="sl-rinterval" type="range" min="33" max="200" step="1" value="66"></label>
+      <label>采样→渲染固定间隔 <output id="out-sr">5</output> ms
+        <input id="sl-sr" type="range" min="0" max="30" step="1" value="5"></label>
+      <div class="btn-row" id="latency-presets">
+        <button type="button" data-lat="0">0 ms</button>
+        <button type="button" data-lat="50">50 ms</button>
+        <button type="button" data-lat="100">100 ms</button>
+        <button type="button" data-lat="200">200 ms</button>
+      </div>
+    </div>
+    <div class="control-block">
+      <h3>越界区域处理（原帧视野外不可重建）</h3>
+      <div class="btn-row">
+        <button id="btn-edge-hatch" type="button" class="active" aria-pressed="true">可见标记（斜纹+边界）</button>
+        <button id="btn-edge-clamp" type="button" aria-pressed="false">边缘钳取（声明式，非正确重建）</button>
+      </div>
+      <p class="hint">斜纹区域 = 重投影像素射线落在已渲染纹理之外；边界线给出可用视野轮廓。钳取模式仅拉伸边缘像素并保留边界线，不声称重建。</p>
+    </div>
+    <div class="control-block">
+      <h3>空间音频（随头转重定位）</h3>
+      <div class="btn-row">
+        <button id="btn-audio" type="button">开启空间音</button>
+      </div>
+      <p class="hint">声源固定于场景世界 +X 方向；AudioListener 朝向与最新姿态同步（PannerNode HRTF），转头时可听到声像偏移。</p>
+    </div>
+    <div class="control-block">
+      <h3>记录导出</h3>
+      <div class="btn-row">
+        <button id="btn-export-csv" type="button">导出时间/误差记录 CSV</button>
+        <button id="btn-clear-log" type="button">清空记录</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="explain">
+  <h2>方法与坐标约定</h2>
+  <ul>
+    <li>三个画面共用同一透视投影矩阵（fovY=72°，近 0.1 / 远 100）与同一右手世界坐标系：+X 右、+Y 上、-Z 前；yaw 绕 +Y，正角向左转。</li>
+    <li>渲染时刻 t<sub>r</sub> 使用姿态 t<sub>s</sub>=t<sub>r</sub>−Δ<sub>SR</sub>；呈现时刻 t<sub>p</sub> 采样最新姿态 q(t<sub>p</sub>)。修正帧在片段着色器中对每个像素：由最新逆投影求射线、施加 Δq=q(t<sub>s</sub>)·q(t<sub>p</sub>)<sup>−1</sup> 转回旧姿态视角，再投影回旧帧纹理。</li>
+    <li>旧帧直接显示 t<sub>s</sub> 姿态纹理（延迟误差全量可见）；参考帧在呈现时刻以最新姿态<strong>另行直接渲染</strong>（诊断对照，不计入演示渲染管线，不参与提高原始渲染频率）。</li>
+    <li>原始渲染按固定间隔触发，重投影每显示帧执行；本演示不通过提高原始渲染频率来替代迟到修正。</li>
+    <li>仅旋转运动被修正；头部平移与场景物体独立运动不在声明范围内，旋转之外的误差会直接保留在画面中。</li>
+  </ul>
+</section>
+
+<footer>
+  <p>图形入口：本页 <code>index.html</code>（详见 <code>docs/usage.zh.md</code>）。命令行仅提供静态服务、轨迹/误差数值表等辅助功能，见 <code>cli/</code>。</p>
+</footer>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
